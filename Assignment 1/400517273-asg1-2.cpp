@@ -9,13 +9,21 @@ class Birthday {
 
 		// Constructor
 		Birthday() {
-			day = rand() % 30 + 1; // Anything between 1 and 30 inclusive
 			month = rand() % 12 + 1; // Anything between 1 (JAN) and 12 (DEC) inclusive
+
+			// Check for which months have different number of days
+			if (month == 4 || month == 6 || month == 9 || month == 11) {
+				day = rand() % 30 + 1; // Anything between 1 and 30 inclusive
+			} else if (month == 2) {
+				day = rand() % 28 + 1; // Anything between 1 and 28 inclusive
+			} else {
+				day = rand() % 31 + 1; // Anything between 1 and 31 inclusive
+			}
 		}
 
 		// Overload the == operator
-		bool operator==(const Birthday &b) {
-			return (day == b.day && month == b.month);
+		bool operator==(const Birthday &otherBirthday) {
+			return (day == otherBirthday.day && month == otherBirthday.month);
 		}
 
 	// Store the day and month as private members
