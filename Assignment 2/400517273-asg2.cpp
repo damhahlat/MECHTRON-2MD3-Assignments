@@ -22,19 +22,14 @@ class DLinkedList {  // doubly linked list
 		void Print(); // recursively prints the scores from best to worst
 		DLinkedList(const DLinkedList& oldList); // Copy constructor
 		DLinkedList &operator=(const DLinkedList& oldList); // Assignment operator
+		void OrderByNames(); // Orders the list by names
+		void OrderByScores(); // Orders the list by scores
+		void Append(DLinkedList& L); // Appends the list L to the end of the current list
+		void Reverse(); // Reverses the list
 
-		// TESTING
-		void PrintList() {
-			Node *current = this->header->next;
-			std::cout << "FIRST: " << this->header->next->Name << std::endl;
-			while (current != this->trailer) {
-				std::cout << "{" << current->Name << "," << current->Score << "}" << std::endl;
-				current = current->next;
-			}
-		}
-
-	private:                        // local type definitions
-		Node* header;                 // list sentinels
+	// List sentients
+	private:
+		Node* header;
 		Node* trailer;
 };
 
@@ -277,6 +272,136 @@ DLinkedList &DLinkedList::operator=(const DLinkedList& oldList) {
 	return *this;
 }
 
+// Part H: Orders the list by names alphabetically
+void DLinkedList::OrderByNames() {
+
+	// Use bubble sort to order the list by names
+	Node *current = this->header->next;
+
+	// Iterate through the list
+	while (current != this->trailer) {
+
+		// Compare the current node to the next node
+		Node *compare = current->next;
+		while (compare != this->trailer) {
+
+			// If the current node is greater than the next node, swap their values
+			if (current->Name > compare->Name) {
+				std::string tempName = current->Name;
+				int tempScore = current->Score;
+				current->Name = compare->Name;
+				current->Score = compare->Score;
+				compare->Name = tempName;
+				compare->Score = tempScore;
+			}
+
+			// Move to the next node
+			compare = compare->next;
+		}
+
+		// Move to the next node
+		current = current->next;
+	}
+}
+
+// Part I: Orders the list by scores
+void DLinkedList::OrderByScores() {
+
+	// Use bubble sort to order the list by scores
+	Node *current = this->header->next;
+
+	// Iterate through the list
+	while (current != this->trailer) {
+
+		// Compare the current node to the next node
+		Node *compare = current->next;
+		while (compare != this->trailer) {
+
+			// If the current node is less than the next node, swap their values
+			if (current->Score < compare->Score) {
+				std::string tempName = current->Name;
+				int tempScore = current->Score;
+				current->Name = compare->Name;
+				current->Score = compare->Score;
+				compare->Name = tempName;
+				compare->Score = tempScore;
+			}
+
+			// Move to the next node
+			compare = compare->next;
+		}
+
+		// Move to the next node
+		current = current->next;
+	}
+}
+
+// Part J: Appends the list L to the end of the current list
+void DLinkedList::Append(DLinkedList& L) {
+
+	// Set a pointer node to the first value of the new list that we'll insert from
+	Node *currentNew = L.header->next;
+
+	// Iterate through each value in L and put it before trailer of this list
+	while (currentNew != L.trailer) {
+
+		// Get the next node because we'll be moving the current node
+		Node *next = currentNew->next;
+
+		// Point trailer prev to the new node
+		this->trailer->prev->next = currentNew;
+		currentNew->prev = this->trailer->prev;
+		this->trailer->prev = currentNew;
+		currentNew->next = this->trailer;
+
+		// Move to the next node
+		currentNew = next;
+
+	}
+
+	// Point the header of L to the trailer of L because the destructor will handle deleting them
+	L.header->next = L.trailer;
+	L.trailer->prev = L.header;
+}
+
+// Part K: Reverses the list
+void DLinkedList::Reverse() {
+
+	// Temporary list that's a copy of the current list
+	DLinkedList temp = *this;
+
+	// Empty the current list
+	Node* current = this->header->next;
+	while (current != this->trailer) {
+		Node* next = current->next;
+		delete current;
+		current = next;
+	}
+	this->header->next = this->trailer;
+	this->trailer->prev = this->header;
+
+	// Set a pointer to the trailer of the temporary list and copy the values to the current list
+	Node *currentNew = temp.trailer->prev;
+	Node *thisPos = this->header;
+	while (currentNew != temp.header) {
+
+		// Create a new node with the same values as the current node and insert into new list
+		Node *newNode = new Node;
+		newNode->Name = currentNew->Name;
+		newNode->Score = currentNew->Score;
+
+		// Insert the new node from the currentNew position
+		newNode->next = this->trailer;
+		newNode->prev = thisPos;
+		this->trailer->prev = newNode;
+		thisPos->next = newNode;
+
+		// Move to the next node
+		currentNew = currentNew->prev;
+		thisPos = newNode;
+	}
+}
+
 int main() {
 	DLinkedList dll;
 	dll.AddScoreInOrder("Alice", 100);
@@ -285,11 +410,42 @@ int main() {
 	dll.AddScoreInOrder("David", 400);
 	dll.AddScoreInOrder("Eve", 50);
 
-	// Test assignment operator
-	DLinkedList dll2;
-	dll2 = dll;
-	dll2.Print();
-	std::cout << "DLL2" << std::endl;
+	std::cout << "Original List:" << std::endl;
 	dll.Print();
-	std::cout << "DLL" << std::endl;
+	std:: cout << std::endl;
+
+	std::cout << "Size of List: " << dll.size() << std::endl;
+	std::cout << "List after size() call:" << std::endl;
+	dll.Print();
+	std::cout << std::endl;
+
+	std::cout << "Sorted by names:" << std::endl;
+	dll.OrderByNames();
+	dll.Print();
+	std::cout << std::endl;
+
+	std::cout << "Sorted by scores:" << std::endl;
+	dll.OrderByScores();
+	dll.Print();
+	std::cout << std::endl;
+
+	DLinkedList dll2;
+	dll2.AddScoreInOrder("Frank", 300);
+	dll2.AddScoreInOrder("George", 700);
+	dll2.AddScoreInOrder("Hank", 800);
+	dll2.AddScoreInOrder("Ivan", 900);
+	dll2.AddScoreInOrder("Jack", 1000);
+	std::cout << "Second List:" << std::endl;
+	dll2.Print();
+	std::cout << std::endl;
+
+	std::cout << "Appending Second List to First List:" << std::endl;
+	dll.Append(dll2);
+	dll.Print();
+	std::cout << std::endl;
+
+	std::cout << "Reversing the List:" << std::endl;
+	dll.Reverse();
+	dll.Print();
+	std::cout << std::endl;
 }
