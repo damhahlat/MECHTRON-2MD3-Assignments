@@ -2,8 +2,14 @@
 #include <cstdlib>
 #include <string>
 #include <stack>
+#include <math.h>
+#include <fstream>
+#include <sstream>
+#include <vector>
+#include <algorithm>
+using namespace std;
 
-typedef std::string Elem;
+typedef string Elem;
 class Node {
 	private:
 
@@ -39,6 +45,7 @@ class LinkedBinaryTree {
 		int size;
 
 	public:
+		double score;
 		Node *root;
 		LinkedBinaryTree() {
 			root = NULL;
@@ -64,44 +71,99 @@ class LinkedBinaryTree {
 		}
 
 		void printExpression(); // Question 1
+		double evaluateExpression(double a, double b); // Question 2
+		double getScore() { return score; }
+		void setScore(double s) { score = s; }
+
+		// Overload the assignment operator and compare by score
+		bool operator<(const LinkedBinaryTree &t) const {
+			return score < t.score;
+		}
 };
 
+// Question 1
 void LinkedBinaryTree::printExpression() {
 	Node *curr = this->root;
-	/*std::cout << "TEST " << curr->getElt() << std::endl;*/
 	if (!curr->isLeaf()) {
-		/*std::cout << "SUBTREE " << curr->getElt() << std::endl;*/
 
 		if (curr->getElt() == "abs") {
-			std::cout << "abs(";
+			cout << "abs(";
 			this->root = curr->getRight();
 			this->printExpression();
-			std::cout << ")";
+			cout << ")";
 			return;
 		}
 
-		std::cout << "(";
+		cout << "(";
 		this->root = curr->getLeft();
 		this->printExpression();
-		std::cout << curr->getElt();
+		cout << curr->getElt();
 		this->root = curr->getRight();
 		this->printExpression();
-		std::cout << ")";
+		cout << ")";
+
+		// Move this back to root
+		this->root = curr;
+
 
 		return;
 	}
-	/*std::cout << "LEAF NODE: " << curr->getElt() << std::endl;*/
 
-	std::cout << curr->getElt();
-	/*std::cout << "PARENT NODE: " << curr->parent->elt << std::endl;*/
+	cout << curr->getElt();
+
 }
 
+// Question 2
+double LinkedBinaryTree::evaluateExpression(double a, double b) {
+	Node *curr = this->root;
+	if (!curr->isLeaf()) {
+		if (curr->getElt() == "abs") {
+			this->root = curr->getRight();
+			double tmp = fabs(this->evaluateExpression(a, b));
+			this->root = curr;
+			return tmp;
+		}
+
+		this->root = curr->getLeft();
+		double left = this->evaluateExpression(a, b);
+		this->root = curr->getRight();
+		double right = this->evaluateExpression(a, b);
+
+		this->root = curr;
+		if (curr->getElt() == "+") {
+			return left + right;
+		} else if (curr->getElt() == "-") {
+			return left - right;
+		} else if (curr->getElt() == "*") {
+			return left * right;
+		} else if (curr->getElt() == "/") {
+			return left / right;
+		} else if (curr->getElt() == ">") {
+			if (left > right) {
+				return 1;
+			} else {
+				return -1;
+			}
+		}
+	}
+
+	if (curr->getElt() == "a") {
+		return a;
+	}
+	if (curr->getElt() == "b") {
+		return b;
+	}
+
+	return stod(curr->getElt());
+}
+
+// Question 6
 // Should handle + - * / abs > operators and numbers may be multiple digits
-LinkedBinaryTree createExpressionTree(std::string postfix) {
+LinkedBinaryTree createExpressionTree(string postfix) {
 
 	// Add all elements separated by space to stack
-	std::stack<std::string> s;
-	std::string temp = "";
+	stack<string> s;
+	string temp = "";
 	for (int i = 0; i < postfix.size(); i++) {
 
 		if (postfix[i] != ' ') {
@@ -117,19 +179,14 @@ LinkedBinaryTree createExpressionTree(std::string postfix) {
 	LinkedBinaryTree tree;
 	tree.addRoot("a");
 	Node *curr = tree.root;
-	/*std::cout << "STACK SIZE: " << s.size() << std::endl;*/
 	int size = s.size();
 	for (int i = 0; i < size; i++) {
-		std::cout << "CURRENT: " << s.top() << std::endl;
 		if (s.top() == "+" || s.top() == "-" || s.top() == "*" || s.top() == "/" || s.top() == ">" || s.top() == "abs") {
-			std::cout << "OPERATOR" << std::endl;
 			curr->elt = s.top();
 			s.pop();
 			tree.expandExternal(curr);
-			/*std::cout << "CURR: " << curr->elt << std::endl;*/
 			curr = curr->right;
 		} else {
-			std::cout << "NUMBER" << std::endl;
 			curr->elt = s.top();
 			s.pop();
 			curr = curr->parent->left;
@@ -140,6 +197,39 @@ LinkedBinaryTree createExpressionTree(std::string postfix) {
 }
 
 int main() {
-	LinkedBinaryTree tree = createExpressionTree("3.7 -1.2 * abs");
-	tree.printExpression();
+	// Read postfix expressions into vector
+	vector<LinkedBinaryTree> trees;
+	ifstream exp_file("expressions.txt");
+	string line;
+	while (getline(exp_file, line)) {
+		trees.push_back(createExpressionTree(line));
+	}
+	// Read input data into 2D vector
+	vector<vector<double>> inputs;
+	ifstream input_file("input.txt");
+	while (getline(input_file, line)) {
+		vector<double> ab_input;
+		stringstream ss(line);
+		string str;
+		while (getline(ss, str, ' ')) {
+			ab_input.push_back(stod(str));
+		}
+		inputs.push_back(ab_input);
+	}
+	// Evaluate expressions on input data
+	for (auto& t : trees) {
+		double sum = 0;
+		for (auto& i : inputs) {
+			sum += t.evaluateExpression(i[0], i[1]);
+		}
+		t.setScore(sum/inputs.size());
+	}
+	// Sort trees by their score
+	sort(trees.begin(), trees.end());
+	for (auto& t : trees) {
+		cout << "Exp ";
+		t.printExpression();
+		cout << " Score " << t.getScore() << endl;
+	}
+
 }
