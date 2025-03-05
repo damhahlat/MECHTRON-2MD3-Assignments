@@ -52,6 +52,10 @@ class LinkedBinaryTree {
 			size = 0;
 		}
 
+		~LinkedBinaryTree() {
+			delete root;
+		}
+
 		int getSize() { return size; }
 		bool empty() { return size == 0; }
 		Node* getRoot() { return root; }
