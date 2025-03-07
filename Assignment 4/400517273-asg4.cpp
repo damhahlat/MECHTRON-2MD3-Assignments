@@ -1,4 +1,3 @@
-// Include necessary libraries
 #include <iostream>
 #include <cstdlib>
 #include <string>
@@ -9,261 +8,237 @@
 #include <vector>
 #include <algorithm>
 
-// Using namespace std to simplify code
 using namespace std;
 
-// Node structure which stores strings
+// Define Elem as a string
 typedef string Elem;
+
+// Node class represents a node in the binary tree
 class Node {
-	private:
-
-
-	// All the public variables and methods
 	public:
+		Elem elt;       // Stores the element (operator, variable, or number)
+		Node *parent;   // Pointer to the parent node
+		Node *left;     // Pointer to the left child
+		Node *right;    // Pointer to the right child
 
-		// Attributes that store the childs, parent, and the actual data inside
-		Elem elt;
-		Node *parent;
-		Node *left;
-		Node *right;
+		// Constructor to initialize a node
+		Node(Elem elt, Node *parent, Node *left, Node *right) 
+			: elt(elt), parent(parent), left(left), right(right) {}
 
-		// Constructor for creating the node
-		Node(Elem elt, Node *parent, Node *left, Node *right) {
-			this->elt = elt;
-			this->parent = parent;
-			this->left = left;
-			this->right = right;
-		}
-
-		// Deleting the node can be done by deleting the childs (parents are deleted as childs of their respective parents)
+		// Destructor to delete child nodes
 		~Node() {
 			delete left;
 			delete right;
 		}
 
-		// Helper functions
+		// Getter methods
 		Elem getElt() { return elt; }
 		Node* getParent() { return parent; }
 		Node* getLeft() { return left; }
 		Node* getRight() { return right; }
-		bool isLeaf() { return (left == NULL && right == NULL); }
-		bool isRoot() { return (parent == NULL); }
-		friend class LinkedBinaryTree;
+
+		// Check if the node is a leaf (no children)
+		bool isLeaf() { return (left == nullptr && right == nullptr); }
+
+		// Check if the node is the root (no parent)
+		bool isRoot() { return (parent == nullptr); }
 };
 
-// Class for the linked binary tree
+// LinkedBinaryTree class represents a binary tree for storing and evaluating expressions
 class LinkedBinaryTree {
 	private:
-		int size;
+		int size; // Tracks the number of nodes in the tree
+
+		// Helper function to recursively copy a tree
+		Node* copyTree(Node* node, Node* parent) {
+
+			// Base case: if the node is null, return null
+			if (node == nullptr) return nullptr;
+			Node* newNode = new Node(node->elt, parent, nullptr, nullptr); // Create a new node
+			newNode->left = copyTree(node->left, newNode);  // Recursively copy the left subtree
+			newNode->right = copyTree(node->right, newNode); // Recursively copy the right subtree
+			return newNode;
+		}
 
 	public:
+		double score; // Stores the score of the tree (for questions 4 and 5)
+		Node *root;  // Pointer to the root node of the tree
 
-		// Stores the score and the root node
-		double score;
-		Node *root;
+		// Constructor to initialize an empty tree
+		LinkedBinaryTree() : root(nullptr), size(0), score(0) {}
 
-		// Constructor which makes the root NULL and makes the size 0
-		LinkedBinaryTree() {
-			root = NULL;
-			size = 0;
+		// Destructor to delete the entire tree
+		~LinkedBinaryTree() {
+			delete root; // Deleting the root recursively deletes all child nodes because destructor in node class
 		}
 
-		// Add a root based on some input to the tree
+		// Copy constructor to perform a deep copy of the tree
+		LinkedBinaryTree(const LinkedBinaryTree& other) {
+			root = copyTree(other.root, nullptr); // Copy the tree starting from the root
+			size = other.size;
+			score = other.score;
+		}
+
+		// Assignment operator to perform a deep copy of the tree
+		LinkedBinaryTree& operator=(const LinkedBinaryTree& other) {
+
+			// self assignment check
+			if (this != &other) {
+				delete root; // Delete the current tree
+				root = copyTree(other.root, nullptr); // Copy the new tree
+				size = other.size;
+				score = other.score;
+			}
+			return *this;
+		}
+
+		// Add a root node to the tree
 		void addRoot(Elem e) {
-			root = new Node(e, NULL, NULL, NULL);
-			size = 1;
+			if (root != nullptr) delete root; // Delete the existing root if it exists
+			root = new Node(e, nullptr, nullptr, nullptr); // Create a new root node
+			size = 1; // Set the size to 1
 		}
 
-		// Given a node, create 2 child nodes for it.
+		// Expand an external node by adding two child nodes
 		void expandExternal(Node *v) {
+			if (v->left != nullptr) delete v->left; // Delete existing left child if it exists
+			if (v->right != nullptr) delete v->right; // Delete existing right child if it exists
 
-			// Make 2 nodes
-			Node *left = new Node("0", v, NULL, NULL);
-			Node *right = new Node("0", v, NULL, NULL);
-
-			// Set the new nodes as the childs of the parent given as a parameter
-			v->left = left;
-			v->right = right;
-
-			// Set the parents of the child nodes as the current node
-			left->parent = v;
-			right->parent = v;
-
-			// Increment the size accordingly
-			size += 2;
+			v->left = new Node("0", v, nullptr, nullptr); // Create a new left child
+			v->right = new Node("0", v, nullptr, nullptr); // Create a new right child
+			size += 2; // Increment the size by 2
 		}
 
-		// Functions prototypes for the assignment questions
-		void printExpression(); // Question 1
-		double evaluateExpression(double a, double b); // Question 2
+		// Print the expression represented by the tree (Question 1)
+		void printExpression() {
+			Node *curr = this->root;
+			if (!curr->isLeaf()) { // If the current node is not a leaf (i.e., it's an operator)
+				if (curr->getElt() == "abs") { // Handle the absolute value operator
+					cout << "abs(";
+					this->root = curr->getRight(); // Move to the right child
+					this->printExpression(); // Recursively print the right subtree
+					cout << ")";
+					this->root = curr; // Restore the root
+					return;
+				}
+				cout << "(";
+				this->root = curr->getLeft(); // Move to the left child
+				this->printExpression(); // Recursively print the left subtree
+				cout << curr->getElt(); // Print the current operator
+				this->root = curr->getRight(); // Move to the right child
+				this->printExpression(); // Recursively print the right subtree
+				cout << ")";
+				this->root = curr; // Restore the root
+				return;
+			}
+			cout << curr->getElt(); // If it's a leaf node, print the element (number or variable)
+		}
+
+		// Evaluate the expression represented by the tree (Question 2)
+		double evaluateExpression(double a, double b) {
+			Node *curr = this->root;
+
+			// If the current node is not a leaf (i.e., it's an operator)
+			if (!curr->isLeaf()) {
+
+				// Handle the absolute value operator
+				if (curr->getElt() == "abs") {
+					this->root = curr->getRight(); // Move to the right child
+					double tmp = fabs(this->evaluateExpression(a, b)); // Recursively evaluate and take absolute value
+					this->root = curr; // Restore the root
+					return tmp;
+				}
+
+				this->root = curr->getLeft(); // Move to the left child
+				double left = this->evaluateExpression(a, b); // Recursively evaluate the left subtree
+				this->root = curr->getRight(); // Move to the right child
+				double right = this->evaluateExpression(a, b); // Recursively evaluate the right subtree
+				this->root = curr; // Restore the root
+
+				// Perform the operation based on the operator
+				if (curr->getElt() == "+") {
+					return left + right;
+				} else if (curr->getElt() == "-") {
+					return left - right;
+				} else if (curr->getElt() == "*") {
+					return left * right;
+				} else if (curr->getElt() == "/") {
+					return left / right;
+				} else if (curr->getElt() == ">") {
+					return (left > right) ? 1 : -1; // Return 1 if true, -1 if false
+				}
+			}
+
+			// If it's a leaf node, return the value of 'a', 'b', or the number itself
+			if (curr->getElt() == "a") {
+				return a;
+			}
+			if (curr->getElt() == "b") {
+				return b;
+			}
+			return stod(curr->getElt()); // Convert the string to a double and return
+		}
+
+		// Getter and setter for the score (Questions 3 and 4)
 		double getScore() { return score; }
 		void setScore(double s) { score = s; }
 
-		// Overload the assignment operator and compare by score
+		// Overload the < operator to compare trees by their scores (Question 5)
 		bool operator<(const LinkedBinaryTree &t) const {
 			return score < t.score;
 		}
 };
 
-// Question 1
-void LinkedBinaryTree::printExpression() {
-
-	// Get the current node
-	Node *curr = this->root;
-
-	// If the current node is not a leaf which means it's an operator and not a number
-	if (!curr->isLeaf()) {
-
-		// If the operator is abs print it out so the child nodes are sandwiched between it
-		if (curr->getElt() == "abs") {
-			cout << "abs(";
-
-			// Set the root to the right child (left child is empty) and recursively call it again
-			this->root = curr->getRight();
-			this->printExpression();
-
-			cout << ")";
-			return;
-		}
-
-		// Print the childs between parantheses with the operator between them
-		cout << "(";
-
-		// Set the root to the childs and recursively call
-		this->root = curr->getLeft();
-		this->printExpression();
-		cout << curr->getElt();
-		this->root = curr->getRight();
-		this->printExpression();
-		cout << ")";
-
-		// Move this back to root
-		this->root = curr;
-
-		return;
-	}
-
-	// Should print a number since this is a leaf node
-	cout << curr->getElt();
-}
-
-// Question 2
-double LinkedBinaryTree::evaluateExpression(double a, double b) {
-
-	// Make the current node the current root
-	Node *curr = this->root;
-
-	// If the current node is not a leaf
-	if (!curr->isLeaf()) {
-
-		// If the operator is an abs perform this block
-		if (curr->getElt() == "abs") {
-
-			// Only data in the right child
-			this->root = curr->getRight();
-
-			// Get the absolute value of the output from the recursion
-			double tmp = fabs(this->evaluateExpression(a, b));
-
-			// Set the root back to the current and return the output from the recursive operation
-			this->root = curr;
-			return tmp;
-		}
-
-		// If the operator isn't an abs, then the general procedure is more or less the same
-		// Recursively get the data on the left and right nodes
-		this->root = curr->getLeft();
-		double left = this->evaluateExpression(a, b);
-		this->root = curr->getRight();
-		double right = this->evaluateExpression(a, b);
-
-		// Move the root back to the current node
-		this->root = curr;
-
-		// Perform specific operations depending on the operator. 
-		if (curr->getElt() == "+") {
-			return left + right;
-		} else if (curr->getElt() == "-") {
-			return left - right;
-		} else if (curr->getElt() == "*") {
-			return left * right;
-		} else if (curr->getElt() == "/") {
-			return left / right;
-		} else if (curr->getElt() == ">") {
-
-			// Should output -1 if false and 1 if true instead of the default 0 and 1
-			if (left > right) {
-				return 1;
-			} else {
-				return -1;
-			}
-		}
-	}
-
-	// If it's a leaf node and if the Elem is either a or b, replace it with the arguments
-	if (curr->getElt() == "a") {
-		return a;
-	}
-	if (curr->getElt() == "b") {
-		return b;
-	}
-
-	// Otherwise, if it's just a normal number, convert it to a double and return it
-	return stod(curr->getElt());
-}
-
-// Question 6
-// Should handle + - * / abs > operators and numbers may be multiple digits
+// Function to create an expression tree from a postfix expression (Question 6)
 LinkedBinaryTree createExpressionTree(string postfix) {
 
-	// Add all elements separated by space to stack
-	stack<string> s;
+	stack<string> s; // Stack to store elements of the postfix expression
+
+	// Empty string that will store the current element
 	string temp = "";
 	for (int i = 0; i < postfix.size(); i++) {
 
-		// If it's not a space, push the data to the string
+		// if the current character is not a space, add it to the current element
 		if (postfix[i] != ' ') {
-			temp += postfix[i];
+			temp += postfix[i]; // Build the current element
 		}
 
-		// If a space or the end of the string has been reached, push the temp string to the stack and reset it
+		// If the current character is a space or the last character in the string
+		// Push the current element to the stack and reset the temporary string
 		if (postfix[i] == ' ' || i == postfix.size() - 1) {
 			s.push(temp);
 			temp = "";
 		}
 	}
 
-	// Tree structure that we'll be filling out. Insert a tentative root into it
+	// Create a new tree with a tentative root
 	LinkedBinaryTree tree;
 	tree.addRoot("a");
-
-	// Set the current node to the tree's root and iterate over the size of the stack
 	Node *curr = tree.root;
 	int size = s.size();
+
+	// Iterate through the stack to construct the tree
 	for (int i = 0; i < size; i++) {
 
-		// If the top element on the stack is an operator, push it onto the top of the tree and create 2 child nodes
+		// If the top element is an operator, set it as the current node and expand
 		if (s.top() == "+" || s.top() == "-" || s.top() == "*" || s.top() == "/" || s.top() == ">" || s.top() == "abs") {
 			curr->elt = s.top();
 			s.pop();
-			tree.expandExternal(curr);
+			tree.expandExternal(curr); // Add two child nodes
+			curr = curr->right; // Move to the right child
+		} 
 
-			// Be default, all data initially is inserted into the right node (hence why abs only checks on the right side)
-			curr = curr->right;
-		} else {
-
-			// If the top element on the stack is a number, insert it in the current node and move the current node to the left child
+		// If the top element is a number, set it as the current node and move to the left child
+		else {
 			curr->elt = s.top();
 			s.pop();
 			curr = curr->parent->left;
 		}
 	}
-
-	// Return the tree
-	return tree;
+	return tree; // Return the constructed tree
 }
 
-// Default main function. No changes.
+// Default main taken from the assignment
 int main() {
 	// Read postfix expressions into vector
 	vector<LinkedBinaryTree> trees;
@@ -272,7 +247,6 @@ int main() {
 	while (getline(exp_file, line)) {
 		trees.push_back(createExpressionTree(line));
 	}
-	
 	// Read input data into 2D vector
 	vector<vector<double>> inputs;
 	ifstream input_file("input.txt");
@@ -285,7 +259,6 @@ int main() {
 		}
 		inputs.push_back(ab_input);
 	}
-
 	// Evaluate expressions on input data
 	for (auto& t : trees) {
 		double sum = 0;
@@ -301,5 +274,4 @@ int main() {
 		t.printExpression();
 		cout << " Score " << t.getScore() << endl;
 	}
-
 }
