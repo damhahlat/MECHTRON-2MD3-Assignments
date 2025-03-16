@@ -68,9 +68,9 @@ class LinkedBinaryTree {
 
   class Position {
    private:
-    Node* v;
 
    public:
+    Node* v;
     Position(Node* _v = NULL) : v(_v) {}
     Elem& operator*() { return v->elt; }
     Position left() const { return Position(v->left); }
@@ -581,6 +581,54 @@ struct LexLessThan {
     }
 };
 
+// Part 3: Question 1
+// Perform crossover by swapping subtrees between two parent trees
+void crossover(mt19937& rng, LinkedBinaryTree& parent1, LinkedBinaryTree& parent2) {
+    // Collect all nodes in both trees
+	LinkedBinaryTree::PositionList pl1 = parent1.positions();
+	LinkedBinaryTree::PositionList pl2 = parent2.positions();
+
+	if (pl1.size() <= 3 || pl2.size() <= 3) return; // Exit early if either tree only has a root and 2 leaf nodes
+
+	LinkedBinaryTree::Node* subtree1;
+	LinkedBinaryTree::Node* subtree2;
+	
+	// Randomly select a subtree from each parent
+	int randomIndex1 = randInt(rng, 1, pl1.size() - 1);
+	int randomIndex2 = randInt(rng, 1, pl2.size() - 1);
+	subtree1 = pl1[randomIndex1].v;
+	subtree2 = pl2[randomIndex2].v;
+
+    // Find the parent nodes of the selected subtrees
+	LinkedBinaryTree::Node* parentOfSubtree1 = subtree1->par;
+	LinkedBinaryTree::Node* parentOfSubtree2 = subtree2->par;
+
+    // Determine if the subtrees are left or right children of their parents
+    bool isSubtree1LeftChild = (parentOfSubtree1 && parentOfSubtree1->left == subtree1);
+    bool isSubtree2LeftChild = (parentOfSubtree2 && parentOfSubtree2->left == subtree2);
+
+    // Swap the subtrees
+    if (parentOfSubtree1) {
+        if (isSubtree1LeftChild) {
+            parentOfSubtree1->left = subtree2;
+        } else {
+            parentOfSubtree1->right = subtree2;
+        }
+    }
+
+    if (parentOfSubtree2) {
+        if (isSubtree2LeftChild) {
+            parentOfSubtree2->left = subtree1;
+        } else {
+            parentOfSubtree2->right = subtree1;
+        }
+    }
+
+    // Update the parent pointers of the swapped subtrees
+    subtree1->par = parentOfSubtree2;
+    subtree2->par = parentOfSubtree1;
+}
+
 int main() {
 	mt19937 rng(42);
 	// Experiment parameters
@@ -627,27 +675,46 @@ int main() {
 	  std::cout << best_tree.depth() << std::endl;
 
 	  // Selection and mutation
+	  /*while (trees.size() < NUM_TREE) {*/
+	  /*  // Selected random "parent" tree from survivors*/
+	  /*  LinkedBinaryTree parent = trees[randInt(rng, 0, (NUM_TREE / 2) - 1)];*/
+	  /**/
+	  /*  // Create child tree with copy constructor*/
+	  /*  LinkedBinaryTree child(parent);*/
+	  /*  child.setGeneration(g);*/
+	  /**/
+	  /*  // Mutation*/
+	  /*  // Delete a randomly selected part of the child's tree*/
+	  /*  child.deleteSubtreeMutator(rng);*/
+	  /*  // Add a random subtree to the child*/
+	  /*  child.addSubtreeMutator(rng, MAX_DEPTH);*/
+	  /**/
+	  /*  trees.push_back(child);*/
+	  /*}*/
+
+	  // Selection, crossover, and mutation
 	  while (trees.size() < NUM_TREE) {
-	    // Selected random "parent" tree from survivors
-	    LinkedBinaryTree parent = trees[randInt(rng, 0, (NUM_TREE / 2) - 1)];
+		  // Select two random parents
+		  int index1 = randInt(rng, 0, (NUM_TREE / 2) - 1);
+		  int index2 = randInt(rng, 0, (NUM_TREE / 2) - 1);
+		  LinkedBinaryTree& parent1 = trees[index1];
+		  LinkedBinaryTree& parent2 = trees[index2];
 
-	    // Create child tree with copy constructor
-	    LinkedBinaryTree child(parent);
-	    child.setGeneration(g);
+		  // Perform crossover
+		  crossover(rng, parent1, parent2);
 
-	    // Mutation
-	    // Delete a randomly selected part of the child's tree
-	    child.deleteSubtreeMutator(rng);
-	    // Add a random subtree to the child
-	    child.addSubtreeMutator(rng, MAX_DEPTH);
-
-	    trees.push_back(child);
+		  // Mutate both parents after crossover
+		  parent1.deleteSubtreeMutator(rng);
+		  parent1.addSubtreeMutator(rng, MAX_DEPTH);
+		  parent2.deleteSubtreeMutator(rng);
+		  parent2.addSubtreeMutator(rng, MAX_DEPTH);
+		  trees.push_back(parent1);
 	  }
 	}
 
 	// // Evaluate best tree with animation
-	// const int num_episode = 3;
-	// evaluate(rng, best_tree, num_episode, true, PARTIALLY_OBSERVABLE);
+	/*const int num_episode = 3;*/
+	/*evaluate(rng, best_tree, num_episode, true, PARTIALLY_OBSERVABLE);*/
 
 	// Print best tree info
 	std::cout << std::endl << "Best tree:" << std::endl;
