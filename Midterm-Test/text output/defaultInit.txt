@@ -1,0 +1,6 @@
+Best tree:
+(a + b)
+Generation: 52
+Size: 3
+Depth: 1
+Fitness: -1.041

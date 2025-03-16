@@ -1,0 +1,6 @@
+Best tree:
+(b / a)
+Generation: 21
+Size: 3
+Depth: 1
+Fitness: -0.227313

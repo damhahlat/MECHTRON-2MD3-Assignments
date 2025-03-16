@@ -655,7 +655,7 @@ int main() {
 	const bool PARTIALLY_OBSERVABLE = false;
 
 	// Write to a csv file
-	ofstream file("part3.csv");
+	ofstream file("crossover.csv");
 	file << "generation,fitness,steps,size,depth" << endl;
 
 	// Create an initial "population" of expression trees
@@ -754,34 +754,4 @@ int main() {
 	std::cout << "Size: " << best_tree.size() << std::endl;
 	std::cout << "Depth: " << best_tree.depth() << std::endl;
 	std::cout << "Fitness: " << best_tree.getScore() << std::endl << std::endl;
-
-	/*vector<LinkedBinaryTree> trees;*/
-	/*mt19937 rng(91);*/
-	/*LinkedBinaryTree t;*/
-	/*t = createRandExpressionTree(5, rng);*/
-	/*t.printExpression();*/
-	/*cout << endl;*/
-	/*t.deleteSubtreeMutator(rng);*/
-	/*t.printExpression();*/
-	/*cout << endl;*/
-	/*t.addSubtreeMutator(rng, 5);*/
-	/*t.printExpression();*/
-	/*cout << endl;*/
-	/*t.deleteSubtreeMutator(rng);*/
-	/*t.printExpression();*/
-	/*cout << endl;*/
-	/*t.addSubtreeMutator(rng, 5);*/
-	/*t.printExpression();*/
-	/*cout << endl;*/
-	/*trees.push_back(t);*/
-	/*LinkedBinaryTree copy(t);*/
-	/*copy.printExpression();*/
-	/*cout << endl;*/
-	/*copy.addSubtreeMutator(rng, 5);*/
-	/*copy.printExpression();*/
-	/*cout << endl;*/
-	/*copy.deleteSubtreeMutator(rng);*/
-	/*copy.printExpression();*/
-	/*cout << endl;*/
-	/*trees.push_back(copy);*/
 }
