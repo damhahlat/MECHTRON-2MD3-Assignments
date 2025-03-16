@@ -385,41 +385,47 @@ void LinkedBinaryTree::deleteSubtreeMutator(mt19937& rng) {
 LinkedBinaryTree createRandExpressionTree(int max_depth, mt19937& rng);
 // Part 1: Question 4
 void LinkedBinaryTree::addSubtreeMutator(mt19937& rng, const int maxDepth) {
-	if (empty()) return; // If the tree is empty, do nothing
+    if (empty()) return; // Exit early if the tree is empty
 
-	// Collect all nodes in the tree
-	PositionList pl = positions();
+    // Collect all nodes in the tree
+    PositionList pl = positions();
 
-    // Filter out only operator nodes
-    vector<Node*> operatorNodes;
+    // Filter out only leaf nodes (nodes with no children)
+    vector<Node*> leafNodes;
     for (auto& pos : pl) {
         Node* node = pos.v;
-        if (isOp(node->elt)) {
-            operatorNodes.push_back(node);
+        if (node->left == nullptr && node->right == nullptr) { // Leaf node
+            leafNodes.push_back(node);
         }
     }
 
-    if (operatorNodes.empty()) return; // If there are no operator nodes, do nothing
+    if (leafNodes.empty()) return; // If there are no leaf nodes, do nothing
 
-    // Randomly select an operator node to attach the new subtree
-    Node* nodeToAttach = operatorNodes[randInt(rng, 0, operatorNodes.size() - 1)];
+    // Randomly select a leaf node to replace
+    Node* leafToReplace = leafNodes[randInt(rng, 0, leafNodes.size() - 1)];
 
     // Create a random subtree
     LinkedBinaryTree randomSubtree = createRandExpressionTree(randInt(rng, 1, maxDepth), rng);
-	/*cout << "ADDING: ";*/
-	/*randomSubtree.printExpression();*/
-	/*cout << endl;*/
-	/*cout << "TO: ";*/
-	/*cout << nodeToAttach->elt << endl;*/
 
-	// Replace child of nodeToAttach with randomSubtree
-	if (randChoice(rng)) {
-		delete nodeToAttach->left;
-		addLeftChild(Position(nodeToAttach), randomSubtree.root());
-	} else {
-		delete nodeToAttach->right;
-		addRightChild(Position(nodeToAttach), randomSubtree.root());
-	}
+    // Replace the leaf node with the new subtree
+    Node* parentNode = leafToReplace->par;
+    if (parentNode == nullptr) {
+        // If the leaf node is the root, replace the entire tree
+        _root = randomSubtree.root();
+        randomSubtree.root()->par = nullptr; // Ensure the new root has no parent
+    } else {
+        // Determine if the leaf node is the left or right child of its parent
+        bool isLeftChild = (parentNode->left == leafToReplace);
+
+        // Replace the leaf node with the new subtree
+        if (isLeftChild) {
+            delete parentNode->left; // Properly delete the existing left child
+            addLeftChild(Position(parentNode), randomSubtree.root());
+        } else {
+            delete parentNode->right; // Properly delete the existing right child
+            addRightChild(Position(parentNode), randomSubtree.root());
+        }
+    }
 }
 
 bool operator<(const LinkedBinaryTree& x, const LinkedBinaryTree& y) {
@@ -514,88 +520,93 @@ void evaluate(mt19937& rng, LinkedBinaryTree& t, const int& num_episode,
 }
 
 int main() {
-	mt19937 rng(89);
-	/*// Experiment parameters*/
-	/*const int NUM_TREE = 50;*/
-	/*const int MAX_DEPTH_INITIAL = 1;*/
-	/*const int MAX_DEPTH = 20;*/
-	/*const int NUM_EPISODE = 20;*/
-	/*const int MAX_GENERATIONS = 100;*/
-	/*const bool PARTIALLY_OBSERVABLE = false;*/
-	/**/
-	/*// Create an initial "population" of expression trees*/
-	/*vector<LinkedBinaryTree> trees;*/
-	/*for (int i = 0; i < NUM_TREE; i++) {*/
-	/*  LinkedBinaryTree t = createRandExpressionTree(MAX_DEPTH_INITIAL, rng);*/
-	/*  trees.push_back(t);*/
-	/*}*/
-	/**/
-	/*// Genetic Algorithm loop*/
-	/*LinkedBinaryTree best_tree;*/
-	/*std::cout << "generation,fitness,steps,size,depth" << std::endl;*/
-	/*for (int g = 1; g <= MAX_GENERATIONS; g++) {*/
-	/**/
-	/*  // Fitness evaluation*/
-	/*  for (auto& t : trees) {*/
-	/*    if (t.getGeneration() < g - 1) continue;  // skip if not new*/
-	/*    evaluate(rng, t, NUM_EPISODE, false, PARTIALLY_OBSERVABLE);*/
-	/*  }*/
-	/**/
-	/*  // sort trees using overloaded "<" op (worst->best)*/
-	/*  std::sort(trees.begin(), trees.end());*/
-	/**/
-	/*  // // sort trees using comparaor class (worst->best)*/
-	/*  // std::sort(trees.begin(), trees.end(), LexLessThan());*/
-	/**/
-	/*  // erase worst 50% of trees (first half of vector)*/
-	/*  trees.erase(trees.begin(), trees.begin() + NUM_TREE / 2);*/
-	/**/
-	/*  // Print stats for best tree*/
-	/*  best_tree = trees[trees.size() - 1];*/
-	/*  std::cout << g << ",";*/
-	/*  std::cout << best_tree.getScore() << ",";*/
-	/*  std::cout << best_tree.getSteps() << ",";*/
-	/*  std::cout << best_tree.size() << ",";*/
-	/*  std::cout << best_tree.depth() << std::endl;*/
-	/**/
-	/*  // Selection and mutation*/
-	/*  while (trees.size() < NUM_TREE) {*/
-	/*    // Selected random "parent" tree from survivors*/
-	/*    LinkedBinaryTree parent = trees[randInt(rng, 0, (NUM_TREE / 2) - 1)];*/
-	/**/
-	/*    // Create child tree with copy constructor*/
-	/*    LinkedBinaryTree child(parent);*/
-	/*    child.setGeneration(g);*/
-	/**/
-	/*    // Mutation*/
-	/*    // Delete a randomly selected part of the child's tree*/
-	/*    child.deleteSubtreeMutator(rng);*/
-	/*    // Add a random subtree to the child*/
-	/*	cout << "TEST\n";*/
-	/*    child.addSubtreeMutator(rng, MAX_DEPTH);*/
-	/**/
-	/*    trees.push_back(child);*/
-	/*  }*/
-	/*}*/
-	/**/
-	/*// // Evaluate best tree with animation*/
-	/*// const int num_episode = 3;*/
-	/*// evaluate(rng, best_tree, num_episode, true, PARTIALLY_OBSERVABLE);*/
-	/**/
-	/*// Print best tree info*/
-	/*std::cout << std::endl << "Best tree:" << std::endl;*/
-	/*best_tree.printExpression();*/
-	/*std::cout << endl;*/
-	/*std::cout << "Generation: " << best_tree.getGeneration() << endl;*/
-	/*std::cout << "Size: " << best_tree.size() << std::endl;*/
-	/*std::cout << "Depth: " << best_tree.depth() << std::endl;*/
-	/*std::cout << "Fitness: " << best_tree.getScore() << std::endl << std::endl;*/
+	mt19937 rng(91);
+	// Experiment parameters
+	const int NUM_TREE = 50;
+	const int MAX_DEPTH_INITIAL = 1;
+	const int MAX_DEPTH = 20;
+	const int NUM_EPISODE = 20;
+	const int MAX_GENERATIONS = 100;
+	const bool PARTIALLY_OBSERVABLE = false;
 
-	LinkedBinaryTree t;
-	t = createRandExpressionTree(5, rng);
-	t.printExpression();
-	cout << endl;
-	t.deleteSubtreeMutator(rng);
-	t.printExpression();
-	cout << endl;
+	// Create an initial "population" of expression trees
+	vector<LinkedBinaryTree> trees;
+	for (int i = 0; i < NUM_TREE; i++) {
+	  LinkedBinaryTree t = createRandExpressionTree(MAX_DEPTH_INITIAL, rng);
+	  trees.push_back(t);
+	}
+
+	// Genetic Algorithm loop
+	LinkedBinaryTree best_tree;
+	std::cout << "generation,fitness,steps,size,depth" << std::endl;
+	for (int g = 1; g <= MAX_GENERATIONS; g++) {
+
+	  // Fitness evaluation
+	  for (auto& t : trees) {
+	    if (t.getGeneration() < g - 1) continue;  // skip if not new
+	    evaluate(rng, t, NUM_EPISODE, false, PARTIALLY_OBSERVABLE);
+	  }
+
+	  // sort trees using overloaded "<" op (worst->best)
+	  std::sort(trees.begin(), trees.end());
+
+	  // // sort trees using comparaor class (worst->best)
+	  // std::sort(trees.begin(), trees.end(), LexLessThan());
+
+	  // erase worst 50% of trees (first half of vector)
+	  trees.erase(trees.begin(), trees.begin() + NUM_TREE / 2);
+
+	  // Print stats for best tree
+	  best_tree = trees[trees.size() - 1];
+	  std::cout << g << ",";
+	  std::cout << best_tree.getScore() << ",";
+	  std::cout << best_tree.getSteps() << ",";
+	  std::cout << best_tree.size() << ",";
+	  std::cout << best_tree.depth() << std::endl;
+
+	  // Selection and mutation
+	  while (trees.size() < NUM_TREE) {
+	    // Selected random "parent" tree from survivors
+	    LinkedBinaryTree parent = trees[randInt(rng, 0, (NUM_TREE / 2) - 1)];
+
+	    // Create child tree with copy constructor
+	    LinkedBinaryTree child(parent);
+	    child.setGeneration(g);
+
+	    // Mutation
+	    // Delete a randomly selected part of the child's tree
+	    child.deleteSubtreeMutator(rng);
+	    // Add a random subtree to the child
+		cout << "TEST\n";
+	    child.addSubtreeMutator(rng, MAX_DEPTH);
+		cout << "TEST\n";
+
+	    trees.push_back(child);
+		cout << "TEST\n";
+	  }
+	}
+
+	// // Evaluate best tree with animation
+	// const int num_episode = 3;
+	// evaluate(rng, best_tree, num_episode, true, PARTIALLY_OBSERVABLE);
+
+	// Print best tree info
+	std::cout << std::endl << "Best tree:" << std::endl;
+	best_tree.printExpression();
+	std::cout << endl;
+	std::cout << "Generation: " << best_tree.getGeneration() << endl;
+	std::cout << "Size: " << best_tree.size() << std::endl;
+	std::cout << "Depth: " << best_tree.depth() << std::endl;
+	std::cout << "Fitness: " << best_tree.getScore() << std::endl << std::endl;
+
+	/*LinkedBinaryTree t;*/
+	/*t = createRandExpressionTree(5, rng);*/
+	/*t.printExpression();*/
+	/*cout << endl;*/
+	/*t.deleteSubtreeMutator(rng);*/
+	/*t.printExpression();*/
+	/*cout << endl;*/
+	/*t.addSubtreeMutator(rng, 5);*/
+	/*t.printExpression();*/
+	/*cout << endl;*/
 }
