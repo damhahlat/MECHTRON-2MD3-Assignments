@@ -650,7 +650,7 @@ int main() {
 	const int MAX_DEPTH_INITIAL = 2;
 	const int MAX_DEPTH = 20;
 	const int NUM_EPISODE = 20;
-	const int MAX_GENERATIONS = 10;
+	const int MAX_GENERATIONS = 100;
 	const bool PARTIALLY_OBSERVABLE = false;
 
 	// Create an initial "population" of expression trees
