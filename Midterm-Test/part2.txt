@@ -1,0 +1,6 @@
+Best tree:
+((((abs(a) > b) / ((b * ((b > a) + b)) - a)) / a) / a)
+Generation: 94
+Size: 18
+Depth: 7
+Fitness: -0.0910502

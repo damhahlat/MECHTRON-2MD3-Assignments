@@ -5,6 +5,7 @@
 #include <random>
 #include <stack>
 #include <vector>
+#include <fstream>
 
 #include "cartCentering.h"
 
@@ -653,6 +654,10 @@ int main() {
 	const int MAX_GENERATIONS = 100;
 	const bool PARTIALLY_OBSERVABLE = false;
 
+	// Write to a csv file
+	ofstream file("part3.csv");
+	file << "generation,fitness,steps,size,depth" << endl;
+
 	// Create an initial "population" of expression trees
 	vector<LinkedBinaryTree> trees;
 	for (int i = 0; i < NUM_TREE; i++) {
@@ -672,10 +677,10 @@ int main() {
 		}
 
 		// sort trees using overloaded "<" op (worst->best)
-		/*std::sort(trees.begin(), trees.end());*/
+		std::sort(trees.begin(), trees.end());
 
 		// // sort trees using comparaor class (worst->best)
-		std::sort(trees.begin(), trees.end(), LexLessThan());
+		/*std::sort(trees.begin(), trees.end(), LexLessThan());*/
 
 		// erase worst 50% of trees (first half of vector)
 		trees.erase(trees.begin(), trees.begin() + NUM_TREE / 2);
@@ -689,47 +694,57 @@ int main() {
 		std::cout << best_tree.depth() << std::endl;
 
 		// Selection and mutation
-		while (trees.size() < NUM_TREE) {
-			// Selected random "parent" tree from survivors
-			LinkedBinaryTree parent = trees[randInt(rng, 0, (NUM_TREE / 2) - 1)];
-
-			// Create child tree with copy constructor
-			LinkedBinaryTree child(parent);
-			child.setGeneration(g);
-
-			// Mutation
-			// Delete a randomly selected part of the child's tree
-			child.deleteSubtreeMutator(rng);
-			// Add a random subtree to the child
-			child.addSubtreeMutator(rng, MAX_DEPTH);
-
-			trees.push_back(child);
-		}
-
-		// Selection, crossover, and mutation
 		/*while (trees.size() < NUM_TREE) {*/
-		/*	// Select two random parents*/
-		/*	int index1 = randInt(rng, 0, (NUM_TREE / 2) - 1);*/
-		/*	int index2 = randInt(rng, 0, (NUM_TREE / 2) - 1);*/
+		/*	// Selected random "parent" tree from survivors*/
+		/*	LinkedBinaryTree parent = trees[randInt(rng, 0, (NUM_TREE / 2) - 1)];*/
 		/**/
-		/*	auto [child1, child2] = crossover(rng, trees[index1], trees[index2]);*/
-		/*	child1.setGeneration(g);*/
-		/*	child2.setGeneration(g);*/
+		/*	// Create child tree with copy constructor*/
+		/*	LinkedBinaryTree child(parent);*/
+		/*	child.setGeneration(g);*/
 		/**/
 		/*	// Mutation*/
-		/*	child1.addSubtreeMutator(rng, MAX_DEPTH);*/
-		/*	child2.addSubtreeMutator(rng, MAX_DEPTH);*/
-		/*	child1.deleteSubtreeMutator(rng);*/
-		/*	child2.deleteSubtreeMutator(rng);*/
+		/*	// Delete a randomly selected part of the child's tree*/
+		/*	child.deleteSubtreeMutator(rng);*/
+		/*	// Add a random subtree to the child*/
+		/*	child.addSubtreeMutator(rng, MAX_DEPTH);*/
 		/**/
-		/*	trees.push_back(child1);*/
-		/*	trees.push_back(child2);*/
+		/*	trees.push_back(child);*/
 		/*}*/
+
+		// Selection, crossover, and mutation
+		while (trees.size() < NUM_TREE) {
+			// Select two random parents
+			int index1 = randInt(rng, 0, (NUM_TREE / 2) - 1);
+			int index2 = randInt(rng, 0, (NUM_TREE / 2) - 1);
+
+			auto [child1, child2] = crossover(rng, trees[index1], trees[index2]);
+			child1.setGeneration(g);
+			child2.setGeneration(g);
+
+			// Mutation
+			child1.addSubtreeMutator(rng, MAX_DEPTH);
+			child2.addSubtreeMutator(rng, MAX_DEPTH);
+			child1.deleteSubtreeMutator(rng);
+			child2.deleteSubtreeMutator(rng);
+
+			trees.push_back(child1);
+			trees.push_back(child2);
+		}
+
+		// Write to a csv file
+		file << g << ",";
+		file << best_tree.getScore() << ",";
+		file << best_tree.getSteps() << ",";
+		file << best_tree.size() << ",";
+		file << best_tree.depth() << endl;
 	}
 
 	// // Evaluate best tree with animation
 	/*const int num_episode = 3;*/
 	/*evaluate(rng, best_tree, num_episode, true, PARTIALLY_OBSERVABLE);*/
+
+	// Close the file
+	file.close();
 
 	// Print best tree info
 	std::cout << std::endl << "Best tree:" << std::endl;

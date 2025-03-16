@@ -1,0 +1,6 @@
+Best tree:
+((b - abs((b + (((b - a) > b) / ((a / a) - abs(((((((a + b) > abs(((((((b - ((a * (a + a)) + (b + a))) - a) + (a + a)) + b) > a) > b))) + (((abs(b) / (b / abs(((abs(b) / (((b + a) * ((((((((b > ((b > a) / (a / (b > a)))) > (a + a)) > (((b * (a - (a * a))) + abs(b)) + b)) - ((b / a) - ((b > a) * ((b - a) / (((abs((((((a > a) - a) > ((b + a) * a)) * (b + (a + a))) - abs(b))) > ((a / b) + a)) - abs((a / b))) - (((((b > a) * ((((a + b) > b) - (b * (b - a))) - ((a + a) > ((a * b) - a)))) + (a > a)) > b) > (b > a))))))) * (b > a)) + (b > abs((a / a)))) / (((a / (a * a)) > b) > (b + b))) / (b > b))) / (b / abs((b > a))))) > (b - (b * a)))))) * a) > b)) + a) > (b * a)) + (b / a)))))))) / a)
+Generation: 94
+Size: 223
+Depth: 37
+Fitness: -0.0614322
