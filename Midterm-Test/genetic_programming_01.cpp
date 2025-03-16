@@ -567,6 +567,20 @@ void evaluate(mt19937& rng, LinkedBinaryTree& t, const int& num_episode,
   t.setSteps(mean_steps / num_episode);
 }
 
+// Part 2: Question 1
+struct LexLessThan {
+    bool operator()(const LinkedBinaryTree& x, const LinkedBinaryTree& y) const {
+        double scoreDiff = fabs(x.getScore() - y.getScore());
+        if (scoreDiff < 0.01) {
+            // Favor simpler trees (fewer nodes) when scores are similar
+            return x.size() > y.size();
+        } else {
+            // Otherwise, compare by score
+            return x.getScore() < y.getScore();
+        }
+    }
+};
+
 int main() {
 	mt19937 rng(42);
 	// Experiment parameters
@@ -574,7 +588,7 @@ int main() {
 	const int MAX_DEPTH_INITIAL = 2;
 	const int MAX_DEPTH = 20;
 	const int NUM_EPISODE = 20;
-	const int MAX_GENERATIONS = 100;
+	const int MAX_GENERATIONS = 10;
 	const bool PARTIALLY_OBSERVABLE = false;
 
 	// Create an initial "population" of expression trees
@@ -596,10 +610,10 @@ int main() {
 	  }
 
 	  // sort trees using overloaded "<" op (worst->best)
-	  std::sort(trees.begin(), trees.end());
+	  /*std::sort(trees.begin(), trees.end());*/
 
 	  // // sort trees using comparaor class (worst->best)
-	  // std::sort(trees.begin(), trees.end(), LexLessThan());
+	  std::sort(trees.begin(), trees.end(), LexLessThan());
 
 	  // erase worst 50% of trees (first half of vector)
 	  trees.erase(trees.begin(), trees.begin() + NUM_TREE / 2);
