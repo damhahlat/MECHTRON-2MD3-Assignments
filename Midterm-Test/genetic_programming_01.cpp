@@ -305,9 +305,9 @@ double LinkedBinaryTree::evaluateExpression(const Position& p, double a,
 void LinkedBinaryTree::deleteSubtreeMutator(mt19937& rng) {
     if (empty()) return; // Exit early if the tree is empty
 
-    // Collect all nodes in the tree and ensure that there isn't just root in the tree
+    // Collect all nodes in the tree and ensure that there isn't just 1 operator and 2 leafs in the tree
     PositionList nodeList = positions();
-	if (nodeList.size() == 1) return;
+	if (nodeList.size() <= 3) return;
 
     // Ensure that the node to delete is an operator and isn't the root
     Node* targetNode = nullptr;
@@ -381,8 +381,6 @@ void LinkedBinaryTree::deleteSubtreeMutator(mt19937& rng) {
     }
 }
 
-// Function prototype for createRandExpressionTree
-LinkedBinaryTree createRandExpressionTree(int max_depth, mt19937& rng);
 // Part 1: Question 4
 void LinkedBinaryTree::addSubtreeMutator(mt19937& rng, const int maxDepth) {
     if (empty()) return; // Exit early if the tree is empty
@@ -404,26 +402,76 @@ void LinkedBinaryTree::addSubtreeMutator(mt19937& rng, const int maxDepth) {
     // Randomly select a leaf node to replace
     Node* leafToReplace = leafNodes[randInt(rng, 0, leafNodes.size() - 1)];
 
-    // Create a random subtree
-    LinkedBinaryTree randomSubtree = createRandExpressionTree(randInt(rng, 1, maxDepth), rng);
+    // Define operators and terminals
+    static vector<string> operators = {"+", "-", "*", "/", ">", "abs"};
+    static vector<string> terminals = {"a", "b"};
+
+    // Stack to iteratively build the subtree
+    struct StackNode {
+        Node* node;
+        int depth;
+    };
+
+    // Initialize the stack with the root of the new subtree
+    Node* subtreeRoot = new Node;
+    subtreeRoot->elt = randChoice(rng) ? operators[randInt(rng, 0, operators.size() - 1)] : terminals[randInt(rng, 0, terminals.size() - 1)]; // Randomly choose an operator or terminal
+    subtreeRoot->par = leafToReplace->par;
 
     // Replace the leaf node with the new subtree
     Node* parentNode = leafToReplace->par;
     if (parentNode == nullptr) {
         // If the leaf node is the root, replace the entire tree
-        _root = randomSubtree.root();
-        randomSubtree.root()->par = nullptr; // Ensure the new root has no parent
+        _root = subtreeRoot;
     } else {
         // Determine if the leaf node is the left or right child of its parent
         bool isLeftChild = (parentNode->left == leafToReplace);
 
         // Replace the leaf node with the new subtree
+        delete leafToReplace; // Properly delete the existing leaf node
         if (isLeftChild) {
-            delete parentNode->left; // Properly delete the existing left child
-            addLeftChild(Position(parentNode), randomSubtree.root());
+            parentNode->left = subtreeRoot;
         } else {
-            delete parentNode->right; // Properly delete the existing right child
-            addRightChild(Position(parentNode), randomSubtree.root());
+            parentNode->right = subtreeRoot;
+        }
+    }
+
+    // Use a stack to iteratively build the subtree
+    StackNode stack[1000]; // Stack to behave like recursion
+    int stackTop = -1;
+
+    // Push the root of the new subtree onto the stack
+    stack[++stackTop] = {subtreeRoot, 1};
+
+    while (stackTop >= 0) {
+        StackNode current = stack[stackTop--];
+        Node* currentNode = current.node;
+        int currentDepth = current.depth;
+
+        // If the current node is an operator and we haven't reached max depth
+        if (isOp(currentNode->elt) && currentDepth < maxDepth) {
+            // Generate left child
+            Node* leftChild = new Node;
+            leftChild->elt = randChoice(rng) || currentDepth == maxDepth - 1
+                             ? terminals[randInt(rng, 0, terminals.size() - 1)]
+                             : operators[randInt(rng, 0, operators.size() - 1)];
+            leftChild->par = currentNode;
+            currentNode->left = leftChild;
+
+            // Generate right child if the operator is binary
+            if (arity(currentNode->elt) > 1) {
+                Node* rightChild = new Node;
+                rightChild->elt = randChoice(rng) || currentDepth == maxDepth - 1
+                                  ? terminals[randInt(rng, 0, terminals.size() - 1)]
+                                  : operators[randInt(rng, 0, operators.size() - 1)];
+                rightChild->par = currentNode;
+                currentNode->right = rightChild;
+
+                // Push right child onto the stack
+                stack[++stackTop] = {rightChild, currentDepth + 1};
+            }
+
+            // Push left child onto the stack
+            stack[++stackTop] = {leftChild, currentDepth + 1};
         }
     }
 }
@@ -520,10 +568,10 @@ void evaluate(mt19937& rng, LinkedBinaryTree& t, const int& num_episode,
 }
 
 int main() {
-	mt19937 rng(91);
+	mt19937 rng(42);
 	// Experiment parameters
 	const int NUM_TREE = 50;
-	const int MAX_DEPTH_INITIAL = 1;
+	const int MAX_DEPTH_INITIAL = 2;
 	const int MAX_DEPTH = 20;
 	const int NUM_EPISODE = 20;
 	const int MAX_GENERATIONS = 100;
@@ -577,12 +625,9 @@ int main() {
 	    // Delete a randomly selected part of the child's tree
 	    child.deleteSubtreeMutator(rng);
 	    // Add a random subtree to the child
-		cout << "TEST\n";
 	    child.addSubtreeMutator(rng, MAX_DEPTH);
-		cout << "TEST\n";
 
 	    trees.push_back(child);
-		cout << "TEST\n";
 	  }
 	}
 
@@ -599,6 +644,8 @@ int main() {
 	std::cout << "Depth: " << best_tree.depth() << std::endl;
 	std::cout << "Fitness: " << best_tree.getScore() << std::endl << std::endl;
 
+	/*vector<LinkedBinaryTree> trees;*/
+	/*mt19937 rng(91);*/
 	/*LinkedBinaryTree t;*/
 	/*t = createRandExpressionTree(5, rng);*/
 	/*t.printExpression();*/
@@ -609,4 +656,21 @@ int main() {
 	/*t.addSubtreeMutator(rng, 5);*/
 	/*t.printExpression();*/
 	/*cout << endl;*/
+	/*t.deleteSubtreeMutator(rng);*/
+	/*t.printExpression();*/
+	/*cout << endl;*/
+	/*t.addSubtreeMutator(rng, 5);*/
+	/*t.printExpression();*/
+	/*cout << endl;*/
+	/*trees.push_back(t);*/
+	/*LinkedBinaryTree copy(t);*/
+	/*copy.printExpression();*/
+	/*cout << endl;*/
+	/*copy.addSubtreeMutator(rng, 5);*/
+	/*copy.printExpression();*/
+	/*cout << endl;*/
+	/*copy.deleteSubtreeMutator(rng);*/
+	/*copy.printExpression();*/
+	/*cout << endl;*/
+	/*trees.push_back(copy);*/
 }
