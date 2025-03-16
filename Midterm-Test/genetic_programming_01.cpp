@@ -163,6 +163,7 @@ class LinkedBinaryTree {
   void deleteSubtreeMutator(mt19937& rng);
   void addSubtreeMutator(mt19937& rng, const int maxDepth);
 
+  Node* _root;  // pointer to the root
  protected:                                        // local utilities
   void preorder(Node* v, PositionList& pl) const;  // preorder utility
   Node* copyPreOrder(const Node* root);
@@ -170,7 +171,6 @@ class LinkedBinaryTree {
   double steps;     // mean steps-per-episode over 20 episodes
   long generation;  // which generation was tree "born"
  private:
-  Node* _root;  // pointer to the root
 };
 
 // add the tree rooted at node child as this tree's left child
@@ -583,25 +583,30 @@ struct LexLessThan {
 
 // Part 3: Question 1
 // Perform crossover by swapping subtrees between two parent trees
-void crossover(mt19937& rng, LinkedBinaryTree& parent1, LinkedBinaryTree& parent2) {
-    // Collect all nodes in both trees
-	LinkedBinaryTree::PositionList pl1 = parent1.positions();
-	LinkedBinaryTree::PositionList pl2 = parent2.positions();
+std::pair<LinkedBinaryTree, LinkedBinaryTree> crossover(mt19937& rng, const LinkedBinaryTree& parent1, const LinkedBinaryTree& parent2) {
+    // Create deep copies of the parent trees
+    LinkedBinaryTree child1(parent1); // Copy constructor creates a deep copy
+    LinkedBinaryTree child2(parent2);
 
-	if (pl1.size() <= 3 || pl2.size() <= 3) return; // Exit early if either tree only has a root and 2 leaf nodes
+    // Collect all nodes in both child trees
+    LinkedBinaryTree::PositionList pl1 = child1.positions();
+    LinkedBinaryTree::PositionList pl2 = child2.positions();
 
-	LinkedBinaryTree::Node* subtree1;
-	LinkedBinaryTree::Node* subtree2;
-	
-	// Randomly select a subtree from each parent
-	int randomIndex1 = randInt(rng, 1, pl1.size() - 1);
-	int randomIndex2 = randInt(rng, 1, pl2.size() - 1);
-	subtree1 = pl1[randomIndex1].v;
-	subtree2 = pl2[randomIndex2].v;
+    // Exit early if either tree only has a root or only 2 leaf nodes
+    if (pl1.size() <= 3 || pl2.size() <= 3) {
+        return {child1, child2}; // Return unmodified copies if crossover is not feasible
+    }
+
+    // Randomly select a subtree from each child
+    int randomIndex1 = randInt(rng, 1, pl1.size() - 1);
+    int randomIndex2 = randInt(rng, 1, pl2.size() - 1);
+
+    LinkedBinaryTree::Node* subtree1 = pl1[randomIndex1].v;
+    LinkedBinaryTree::Node* subtree2 = pl2[randomIndex2].v;
 
     // Find the parent nodes of the selected subtrees
-	LinkedBinaryTree::Node* parentOfSubtree1 = subtree1->par;
-	LinkedBinaryTree::Node* parentOfSubtree2 = subtree2->par;
+    LinkedBinaryTree::Node* parentOfSubtree1 = subtree1->par;
+    LinkedBinaryTree::Node* parentOfSubtree2 = subtree2->par;
 
     // Determine if the subtrees are left or right children of their parents
     bool isSubtree1LeftChild = (parentOfSubtree1 && parentOfSubtree1->left == subtree1);
@@ -614,6 +619,9 @@ void crossover(mt19937& rng, LinkedBinaryTree& parent1, LinkedBinaryTree& parent
         } else {
             parentOfSubtree1->right = subtree2;
         }
+    } else {
+        // If subtree1 has no parent, it must be the root of child1
+        child1._root = subtree2; // Update the root pointer
     }
 
     if (parentOfSubtree2) {
@@ -622,11 +630,17 @@ void crossover(mt19937& rng, LinkedBinaryTree& parent1, LinkedBinaryTree& parent
         } else {
             parentOfSubtree2->right = subtree1;
         }
+    } else {
+        // If subtree2 has no parent, it must be the root of child2
+        child2._root = subtree1; // Update the root pointer
     }
 
     // Update the parent pointers of the swapped subtrees
     subtree1->par = parentOfSubtree2;
     subtree2->par = parentOfSubtree1;
+
+    // Return the modified child trees
+    return {child1, child2};
 }
 
 int main() {
@@ -642,8 +656,8 @@ int main() {
 	// Create an initial "population" of expression trees
 	vector<LinkedBinaryTree> trees;
 	for (int i = 0; i < NUM_TREE; i++) {
-	  LinkedBinaryTree t = createRandExpressionTree(MAX_DEPTH_INITIAL, rng);
-	  trees.push_back(t);
+		LinkedBinaryTree t = createRandExpressionTree(MAX_DEPTH_INITIAL, rng);
+		trees.push_back(t);
 	}
 
 	// Genetic Algorithm loop
@@ -651,65 +665,66 @@ int main() {
 	std::cout << "generation,fitness,steps,size,depth" << std::endl;
 	for (int g = 1; g <= MAX_GENERATIONS; g++) {
 
-	  // Fitness evaluation
-	  for (auto& t : trees) {
-	    if (t.getGeneration() < g - 1) continue;  // skip if not new
-	    evaluate(rng, t, NUM_EPISODE, false, PARTIALLY_OBSERVABLE);
-	  }
+		// Fitness evaluation
+		for (auto& t : trees) {
+			if (t.getGeneration() < g - 1) continue;  // skip if not new
+			evaluate(rng, t, NUM_EPISODE, false, PARTIALLY_OBSERVABLE);
+		}
 
-	  // sort trees using overloaded "<" op (worst->best)
-	  /*std::sort(trees.begin(), trees.end());*/
+		// sort trees using overloaded "<" op (worst->best)
+		/*std::sort(trees.begin(), trees.end());*/
 
-	  // // sort trees using comparaor class (worst->best)
-	  std::sort(trees.begin(), trees.end(), LexLessThan());
+		// // sort trees using comparaor class (worst->best)
+		std::sort(trees.begin(), trees.end(), LexLessThan());
 
-	  // erase worst 50% of trees (first half of vector)
-	  trees.erase(trees.begin(), trees.begin() + NUM_TREE / 2);
+		// erase worst 50% of trees (first half of vector)
+		trees.erase(trees.begin(), trees.begin() + NUM_TREE / 2);
 
-	  // Print stats for best tree
-	  best_tree = trees[trees.size() - 1];
-	  std::cout << g << ",";
-	  std::cout << best_tree.getScore() << ",";
-	  std::cout << best_tree.getSteps() << ",";
-	  std::cout << best_tree.size() << ",";
-	  std::cout << best_tree.depth() << std::endl;
+		// Print stats for best tree
+		best_tree = trees[trees.size() - 1];
+		std::cout << g << ",";
+		std::cout << best_tree.getScore() << ",";
+		std::cout << best_tree.getSteps() << ",";
+		std::cout << best_tree.size() << ",";
+		std::cout << best_tree.depth() << std::endl;
 
-	  // Selection and mutation
-	  /*while (trees.size() < NUM_TREE) {*/
-	  /*  // Selected random "parent" tree from survivors*/
-	  /*  LinkedBinaryTree parent = trees[randInt(rng, 0, (NUM_TREE / 2) - 1)];*/
-	  /**/
-	  /*  // Create child tree with copy constructor*/
-	  /*  LinkedBinaryTree child(parent);*/
-	  /*  child.setGeneration(g);*/
-	  /**/
-	  /*  // Mutation*/
-	  /*  // Delete a randomly selected part of the child's tree*/
-	  /*  child.deleteSubtreeMutator(rng);*/
-	  /*  // Add a random subtree to the child*/
-	  /*  child.addSubtreeMutator(rng, MAX_DEPTH);*/
-	  /**/
-	  /*  trees.push_back(child);*/
-	  /*}*/
+		// Selection and mutation
+		while (trees.size() < NUM_TREE) {
+			// Selected random "parent" tree from survivors
+			LinkedBinaryTree parent = trees[randInt(rng, 0, (NUM_TREE / 2) - 1)];
 
-	  // Selection, crossover, and mutation
-	  while (trees.size() < NUM_TREE) {
-		  // Select two random parents
-		  int index1 = randInt(rng, 0, (NUM_TREE / 2) - 1);
-		  int index2 = randInt(rng, 0, (NUM_TREE / 2) - 1);
-		  LinkedBinaryTree& parent1 = trees[index1];
-		  LinkedBinaryTree& parent2 = trees[index2];
+			// Create child tree with copy constructor
+			LinkedBinaryTree child(parent);
+			child.setGeneration(g);
 
-		  // Perform crossover
-		  crossover(rng, parent1, parent2);
+			// Mutation
+			// Delete a randomly selected part of the child's tree
+			child.deleteSubtreeMutator(rng);
+			// Add a random subtree to the child
+			child.addSubtreeMutator(rng, MAX_DEPTH);
 
-		  // Mutate both parents after crossover
-		  parent1.deleteSubtreeMutator(rng);
-		  parent1.addSubtreeMutator(rng, MAX_DEPTH);
-		  parent2.deleteSubtreeMutator(rng);
-		  parent2.addSubtreeMutator(rng, MAX_DEPTH);
-		  trees.push_back(parent1);
-	  }
+			trees.push_back(child);
+		}
+
+		// Selection, crossover, and mutation
+		/*while (trees.size() < NUM_TREE) {*/
+		/*	// Select two random parents*/
+		/*	int index1 = randInt(rng, 0, (NUM_TREE / 2) - 1);*/
+		/*	int index2 = randInt(rng, 0, (NUM_TREE / 2) - 1);*/
+		/**/
+		/*	auto [child1, child2] = crossover(rng, trees[index1], trees[index2]);*/
+		/*	child1.setGeneration(g);*/
+		/*	child2.setGeneration(g);*/
+		/**/
+		/*	// Mutation*/
+		/*	child1.addSubtreeMutator(rng, MAX_DEPTH);*/
+		/*	child2.addSubtreeMutator(rng, MAX_DEPTH);*/
+		/*	child1.deleteSubtreeMutator(rng);*/
+		/*	child2.deleteSubtreeMutator(rng);*/
+		/**/
+		/*	trees.push_back(child1);*/
+		/*	trees.push_back(child2);*/
+		/*}*/
 	}
 
 	// // Evaluate best tree with animation
