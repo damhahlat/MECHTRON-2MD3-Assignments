@@ -11,6 +11,10 @@
 
 using namespace std;
 
+// Memory buffer for the read and write operations
+// Using a deque to allow for efficient removal of the oldest value
+deque<double> memory;
+const int MEMORY_SIZE = 5; // Maximum size of the memory buffer
 
 // return a double unifomrly sampled in (0,1)
 double randDouble(mt19937& rng) {
@@ -162,7 +166,7 @@ class LinkedBinaryTree {
     randomExpressionTree(_root, maxDepth, rng);
   }
   void deleteSubtreeMutator(mt19937& rng);
-  void addSubtreeMutator(mt19937& rng, const int maxDepth);
+  void addSubtreeMutator(mt19937& rng, const int maxDepth, bool partially_observable = false);
 
   Node* _root;  // pointer to the root
  protected:                                        // local utilities
@@ -263,23 +267,26 @@ void LinkedBinaryTree::printExpression(Node* v) {
 	}
 }
 
-double evalOp(string op, double x, double y = 0) {
-  double result;
-  if (op == "+")
-    result = x + y;
-  else if (op == "-")
-    result = x - y;
-  else if (op == "*")
-    result = x * y;
-  else if (op == "/") {
-    result = x / y;
-  } else if (op == ">") {
-    result = x > y ? 1 : -1;
-  } else if (op == "abs") {
-    result = abs(x);
-  } else
-    result = 0;
-  return isnan(result) || !isfinite(result) ? 0 : result;
+double evalOp(const string op, double x, double y = 0.0) {
+    if (op == "+") return x + y;
+    if (op == "-") return x - y;
+    if (op == "*") return x * y;
+    if (op == "/") return y != 0 ? x / y : 0; // Avoid division by zero
+    if (op == ">") return x > y ? 1 : -1;
+    if (op == "abs") return fabs(x);
+    if (op == "read") {
+        // Read the most recent value from memory
+        return memory.empty() ? 0.0 : memory.back();
+    }
+    if (op == "write") {
+        // Write the current observation (x) into memory
+        memory.push_back(x);
+        if (memory.size() > MEMORY_SIZE) {
+            memory.pop_front(); // Remove the oldest value if buffer is full
+        }
+        return 0.0; // Write operation does not affect the tree's output
+    }
+    return 0.0; // Default case
 }
 
 double LinkedBinaryTree::evaluateExpression(const Position& p, double a,
@@ -383,7 +390,7 @@ void LinkedBinaryTree::deleteSubtreeMutator(mt19937& rng) {
 }
 
 // Part 1: Question 4
-void LinkedBinaryTree::addSubtreeMutator(mt19937& rng, const int maxDepth) {
+void LinkedBinaryTree::addSubtreeMutator(mt19937& rng, const int maxDepth, bool partially_observable) {
     if (empty()) return; // Exit early if the tree is empty
 
     // Collect all nodes in the tree
@@ -405,6 +412,10 @@ void LinkedBinaryTree::addSubtreeMutator(mt19937& rng, const int maxDepth) {
 
     // Define operators and terminals
     static vector<string> operators = {"+", "-", "*", "/", ">", "abs"};
+	if (partially_observable) {
+		operators.push_back("read");
+		operators.push_back("write");
+	}
     static vector<string> terminals = {"a", "b"};
 
     // Stack to iteratively build the subtree
@@ -508,10 +519,14 @@ LinkedBinaryTree createExpressionTree(string postfix) {
 }
 
 // Part 1: Question 2
-LinkedBinaryTree createRandExpressionTree(int max_depth, mt19937& rng) {
+LinkedBinaryTree createRandExpressionTree(int max_depth, mt19937& rng, bool partially_observable = false) {
 
 	// Store the operators and terminals
 	static vector<string> operators = {"+", "-", "*", "/", ">", "abs"};
+	if (partially_observable) {
+		operators.push_back("read");
+		operators.push_back("write");
+	}
 	static vector<string> terminals = {"a", "b"};
 
 	LinkedBinaryTree t;
@@ -544,28 +559,35 @@ LinkedBinaryTree createRandExpressionTree(int max_depth, mt19937& rng) {
 // evaluate tree t in the cart centering task
 void evaluate(mt19937& rng, LinkedBinaryTree& t, const int& num_episode,
               bool animate, bool partially_observable = false) {
-  cartCentering env;
-  double mean_score = 0.0;
-  double mean_steps = 0.0;
-  for (int i = 0; i < num_episode; i++) {
-    double episode_score = 0.0;
-    int episode_steps = 0;
-    env.reset(rng);
-    while (!env.terminal()) {
-      int action;
-      if (partially_observable) {
-        action = t.evaluateExpression(env.getCartXPos(), 0.0);
-      } else {
-        action = t.evaluateExpression(env.getCartXPos(), env.getCartXVel());
-      }
-      episode_score += env.update(action, animate);
-      episode_steps++;
+    cartCentering env;
+    double mean_score = 0.0;
+    double mean_steps = 0.0;
+
+    for (int i = 0; i < num_episode; i++) {
+        double episode_score = 0.0;
+        int episode_steps = 0;
+        env.reset(rng);
+
+        while (!env.terminal()) {
+            int action;
+            double x_t = env.getCartXPos();
+            double v_t = partially_observable ? 0.0 : env.getCartXVel();
+
+            // Clear memory at the start of each episode
+            memory.clear();
+
+            // Evaluate the tree with (X(t), 0.0) in partially observable mode
+            action = t.evaluateExpression(x_t, v_t);
+            episode_score += env.update(action, animate);
+            episode_steps++;
+        }
+
+        mean_score += episode_score;
+        mean_steps += episode_steps;
     }
-    mean_score += episode_score;
-    mean_steps += episode_steps;
-  }
-  t.setScore(mean_score / num_episode);
-  t.setSteps(mean_steps / num_episode);
+
+    t.setScore(mean_score / num_episode);
+    t.setSteps(mean_steps / num_episode);
 }
 
 // Part 2: Question 1
@@ -661,7 +683,7 @@ int main() {
 	// Create an initial "population" of expression trees
 	vector<LinkedBinaryTree> trees;
 	for (int i = 0; i < NUM_TREE; i++) {
-		LinkedBinaryTree t = createRandExpressionTree(MAX_DEPTH_INITIAL, rng);
+		LinkedBinaryTree t = createRandExpressionTree(MAX_DEPTH_INITIAL, rng, PARTIALLY_OBSERVABLE);
 		trees.push_back(t);
 	}
 
@@ -694,42 +716,42 @@ int main() {
 		std::cout << best_tree.depth() << std::endl;
 
 		// Selection and mutation
-		/*while (trees.size() < NUM_TREE) {*/
-		/*	// Selected random "parent" tree from survivors*/
-		/*	LinkedBinaryTree parent = trees[randInt(rng, 0, (NUM_TREE / 2) - 1)];*/
-		/**/
-		/*	// Create child tree with copy constructor*/
-		/*	LinkedBinaryTree child(parent);*/
-		/*	child.setGeneration(g);*/
-		/**/
-		/*	// Mutation*/
-		/*	// Delete a randomly selected part of the child's tree*/
-		/*	child.deleteSubtreeMutator(rng);*/
-		/*	// Add a random subtree to the child*/
-		/*	child.addSubtreeMutator(rng, MAX_DEPTH);*/
-		/**/
-		/*	trees.push_back(child);*/
-		/*}*/
-
-		// Selection, crossover, and mutation
 		while (trees.size() < NUM_TREE) {
-			// Select two random parents
-			int index1 = randInt(rng, 0, (NUM_TREE / 2) - 1);
-			int index2 = randInt(rng, 0, (NUM_TREE / 2) - 1);
+			// Selected random "parent" tree from survivors
+			LinkedBinaryTree parent = trees[randInt(rng, 0, (NUM_TREE / 2) - 1)];
 
-			auto [child1, child2] = crossover(rng, trees[index1], trees[index2]);
-			child1.setGeneration(g);
-			child2.setGeneration(g);
+			// Create child tree with copy constructor
+			LinkedBinaryTree child(parent);
+			child.setGeneration(g);
 
 			// Mutation
-			child1.addSubtreeMutator(rng, MAX_DEPTH);
-			child2.addSubtreeMutator(rng, MAX_DEPTH);
-			child1.deleteSubtreeMutator(rng);
-			child2.deleteSubtreeMutator(rng);
+			// Delete a randomly selected part of the child's tree
+			child.deleteSubtreeMutator(rng);
+			// Add a random subtree to the child
+			child.addSubtreeMutator(rng, MAX_DEPTH);
 
-			trees.push_back(child1);
-			trees.push_back(child2);
+			trees.push_back(child);
 		}
+
+		// Selection, crossover, and mutation
+		/*while (trees.size() < NUM_TREE) {*/
+		/*	// Select two random parents*/
+		/*	int index1 = randInt(rng, 0, (NUM_TREE / 2) - 1);*/
+		/*	int index2 = randInt(rng, 0, (NUM_TREE / 2) - 1);*/
+		/**/
+		/*	auto [child1, child2] = crossover(rng, trees[index1], trees[index2]);*/
+		/*	child1.setGeneration(g);*/
+		/*	child2.setGeneration(g);*/
+		/**/
+		/*	// Mutation*/
+		/*	child1.addSubtreeMutator(rng, MAX_DEPTH, PARTIALLY_OBSERVABLE);*/
+		/*	child2.addSubtreeMutator(rng, MAX_DEPTH, PARTIALLY_OBSERVABLE);*/
+		/*	child1.deleteSubtreeMutator(rng);*/
+		/*	child2.deleteSubtreeMutator(rng);*/
+		/**/
+		/*	trees.push_back(child1);*/
+		/*	trees.push_back(child2);*/
+		/*}*/
 
 		// Write to a csv file
 		file << g << ",";
