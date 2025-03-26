@@ -2,6 +2,7 @@
 #include <fstream>
 #include <cstdlib>
 #include <string>
+#include <vector>
 using namespace std;
 
 /*
@@ -62,9 +63,38 @@ class HashTable {
 			}
 		}
 
-		void insert(string key);
-		int search(string key);
-		void increment(string key);
+		// Function to get the index of a key in the table
+		int getIndexOfKey(string key) {
+
+			// Preliminary guess for a key is just the hash
+			int index = hash(key);
+
+			// Iterate in a circular manner until you get the actual key
+			for (int i = index; i < size; i++) {
+				if (table[i].key == key) {
+					return i;
+				}
+
+				// If we reach the end of the table, start from the beginning.
+				if (i == size - 1) {
+					i = 0;
+				}
+			}
+			return -1;
+		}
+
+		// Function to search for a key's value in the table
+		// Resets the value to 0 after getting the value
+		int getValue(string key) {
+			int index = getIndexOfKey(key);
+			int value = table[index].value;
+			table[index].value = 0;
+			return value;
+		}
+
+		// Big main functions for functionality
+		void insert(string key); // Function to insert a key into the table
+		bool increment(string key); // Function to increment the value of a key in the table
 
 		// For testing purposes
 		void print() {
@@ -111,10 +141,44 @@ void HashTable::insert(string key) {
 	}
 }
 
+// Function to increment the value of a key in the table
+bool HashTable::increment(string key) {
 
+	// Get the index based on the hash
+	int index = hash(key);
+
+	// If the key is found, increment the value by 1
+	if (table[index].key == key) {
+		table[index].value++;
+		return true;
+	}
+
+	// Collision handling
+	else {
+		for (int i = index+1; i < size; i++) {
+			if (table[i].key == key) {
+				table[i].value++;
+				return true;
+			}
+
+			// If we reach the end of the table, start from the beginning.
+			if (i == size - 1) {
+				i = 0;
+			}
+
+			if (i == index) {
+				break;
+			}
+		}
+	}
+
+	return false;
+}
 
 
 int main() {
+
+	// Initialize the hash table and read f1 while inserting into the hash table
 	HashTable table;
 	string word;
 	ifstream f1("f1.txt");
@@ -126,6 +190,41 @@ int main() {
 
 	// Print the hash table
 	table.print();
+
+	// Read f2 and increment the value of the key in the hash table
+	// Also store a vector of all the keys in f2
+	ifstream f2("f2.txt");
+	vector<string> keysInF2;
+
+	// Read f2 and increment the value of the key in the hash table
+	while (f2 >> word) {
+		if (table.increment(word)) {
+			keysInF2.push_back(word);
+		}
+	}
+
+	// Bubble sort the keys in f2 based on alphabetical order
+	for (int i = 0; i < keysInF2.size(); i++) {
+		for (int j = 0; j < keysInF2.size() - 1; j++) {
+			if (keysInF2[j] > keysInF2[j+1]) {
+				string temp = keysInF2[j];
+				keysInF2[j] = keysInF2[j+1];
+				keysInF2[j+1] = temp;
+			}
+		}
+	}
+
+	// Print the keys in f2 based on the value in the hash table
+	// To ensure uniqueness of the keys (repetitive printing), we will make the value 0 after printing (occurs in the getValue function)
+	ofstream out("out.txt");
+
+	for (int i = 0; i < keysInF2.size(); i++) {
+		int value = table.getValue(keysInF2[i]);
+		for (int j = 0; j < value; j++) {
+			out << keysInF2[i] << endl;
+		}
+		table.getIndexOfKey(keysInF2[i]);
+	}
 
 	return 0;
 }
