@@ -9,42 +9,47 @@ using namespace std;
 	General assumptions for the project behaviour
 
 	The assignment was fairly open-ended in terms of instructions,
-	so I've taken the liberty of laying out some general criteria as per
-	my understanding. 
+	so I've taken the liberty of laying out some general assumptions
+	for the behaviour of the program. I've also aimed to explain
+	some of my design choices in the code.
 
 	The hashmap stores the key, which is the word from f1,
 	and the value is the amount of times that word appears in f2. For example,
-	if the word "because" appears twice in f2, then it will be printed twice.
+	if the word "because" appears twice in f2, then it will be printed twice (assuming it's a key in f1).
 
 	For collision handling, the idea is to add the key to the next available slot.
 	While this is not the most efficient way to handle collisions, it is the simplest
-	in the context of this assignment.
+	in the context of this assignment which is why I've chosen to implement it this way.
 
-	The size is assumed to be no more than 1000, since the sample files only go up to 800 words.
+	The size is assumed to be no more than 1000, since the sample files only go up to 1000 words.
 
 	The hash table consists of an array of Nodes, where each Node has a string (key) and an integer (value).
 
 	When a string in f2 is found to be in the hash table, the value is incremented by 1.
-	Then, that string is added to an array. When f2 has been completely read, teh string array
+	Then, that string is added to an array. When f2 has been completely read, the string array
 	is sorted and then printed, based on the value of the key in the hash table, into a file called "out.txt".
 */
 
-#define SIZE 1000
+// Size of the hash table
+#define SIZE 1001
 
+// A node in the hash table
+// Stores the key and the value
 struct Node {
 	string key;
 	int value;
 };
 
-// This hashtable only stores keys, not key-value pairs.
-// Storing values can be implemented with ease but it is not required with the goals of this assignment.
+// The hash table consists of an array of Nodes
 class HashTable {
 
 	private:
+
+		// Declare the hash table and the size of the table
 		Node table[SIZE];
 		int size = SIZE;
 
-		// Hash function. Adds them all up and mods by the size of the table which gives the index.
+		// Hash function. Adds up the ASCII values of the characters in the string and returns the sum mod the size of the table
 		int hash(string key) {
 			int sum = 0;
 			for (int i = 0; i < key.length(); i++) {
@@ -70,9 +75,17 @@ class HashTable {
 			int index = hash(key);
 
 			// Iterate in a circular manner until you get the actual key
+			// Iteration is for collision handling
 			for (int i = index; i < size; i++) {
+
+				// If the key is found, return the index
 				if (table[i].key == key) {
 					return i;
+				}
+
+				// If no key is found, break the loop
+				if (i == index-1) {
+					break;
 				}
 
 				// If we reach the end of the table, start from the beginning.
@@ -80,13 +93,22 @@ class HashTable {
 					i = 0;
 				}
 			}
+
+			// If the key is not found, return -1
 			return -1;
 		}
 
 		// Function to search for a key's value in the table
 		// Resets the value to 0 after getting the value
 		int getValue(string key) {
+
+			// Get the index of the key
 			int index = getIndexOfKey(key);
+
+			// If the key is not found, return 0
+			if (index == -1) return 0;
+
+			// Get the value and reset the value to 0
 			int value = table[index].value;
 			table[index].value = 0;
 			return value;
@@ -96,7 +118,7 @@ class HashTable {
 		void insert(string key); // Function to insert a key into the table
 		bool increment(string key); // Function to increment the value of a key in the table
 
-		// For testing purposes
+		// For testing purposes. Prints the hash table
 		void print() {
 			for (int i = 0; i < size; i++) {
 				if (table[i].key != "") {
@@ -109,6 +131,9 @@ class HashTable {
 
 // Function which inserts the key into the table.
 void HashTable::insert(string key) {
+
+	// Get the index based on the hash
+	// and insert the key if the area is empty
 	int index = hash(key);
 	if (table[index].key == "") {
 		table[index].key = key;
@@ -116,6 +141,7 @@ void HashTable::insert(string key) {
 	} 
 
 	// Collision handling
+	// If the area is not empty, iterate through the table until an empty area is found
 	else {
 
 		// Iterate through the hash table in a circular manner until an empty area is found.
@@ -172,9 +198,9 @@ bool HashTable::increment(string key) {
 		}
 	}
 
+	// If the key is not found, return false
 	return false;
 }
-
 
 int main() {
 
@@ -189,7 +215,7 @@ int main() {
 	}
 
 	// Print the hash table
-	table.print();
+	// table.print();
 
 	// Read f2 and increment the value of the key in the hash table
 	// Also store a vector of all the keys in f2
@@ -197,6 +223,7 @@ int main() {
 	vector<string> keysInF2;
 
 	// Read f2 and increment the value of the key in the hash table
+	// Add the key to the vector if it is a key
 	while (f2 >> word) {
 		if (table.increment(word)) {
 			keysInF2.push_back(word);
@@ -218,6 +245,7 @@ int main() {
 	// To ensure uniqueness of the keys (repetitive printing), we will make the value 0 after printing (occurs in the getValue function)
 	ofstream out("out.txt");
 
+	// Print the keys to out.txt
 	for (int i = 0; i < keysInF2.size(); i++) {
 		int value = table.getValue(keysInF2[i]);
 		for (int j = 0; j < value; j++) {
